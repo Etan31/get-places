@@ -1,0 +1,28 @@
+# fly.toml app configuration generated for get-places-server
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = "get-places-server"
+primary_region = "ord"  # Change to region closest to you
+
+[build]
+  builder = "paketobuildpacks"
+  buildpacks = ["gcr.io/buildpacks/nodejs"]
+
+[env]
+  PORT = "3001"
+  NODE_ENV = "production"
+  SCRAPER_HEADLESS = "true"
+  SCRAPER_CONCURRENCY = "5"
+  SCRAPER_MAX_RESULTS = "50"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
