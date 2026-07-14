@@ -11,5 +11,8 @@
     "build": "pnpm --filter @get-places/client build",
     "start": "pnpm --filter @get-places/server start"
   },
-  "packageManager": "pnpm@9.15.4"
+  "packageManager": "pnpm@9.15.4",
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.10"
+  }
 }

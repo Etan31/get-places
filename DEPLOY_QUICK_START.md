@@ -19,7 +19,9 @@ git push
 ### Backend (Fly.io)
 ```bash
 # 1. Install Fly CLI
-curl -L https://fly.io/install.sh | sh
+# macOS: brew install flyctl
+# Linux: curl -L https://fly.io/install.sh | sh
+# Windows: https://github.com/superfly/flyctl/releases (download .exe)
 
 # 2. Create account and login
 flyctl auth signup
@@ -30,15 +32,19 @@ flyctl auth login
 cd /path/to/get-places
 flyctl launch
 # Name: get-places-server
-# Region: pick one
+# Region: pick one close to you
+# Dockerfile: Yes (auto-detected)
 # Postgres: No
-# Deploy: Yes
+# Deploy: Yes (wait 2-3 min)
 
-# 4. Get your URL
+# 4. Get your public URL
 flyctl info
-# Copy the public URL
+# Look for "app hostname" - copy it
 
-# 5. Update Vercel env var with the URL
+# 5. Update Vercel environment variable with the URL from step 4
+# Go to Vercel project settings → Environment Variables
+# VITE_API_BASE_URL=https://get-places-server.fly.dev
+# (or whatever your fly.io URL is)
 ```
 
 **Done! Both are live.**
