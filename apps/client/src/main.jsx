@@ -67,7 +67,7 @@ function App() {
         })
       });
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       if (!response.ok) {
         throw new Error(data.error || 'Scrape failed');
       }
@@ -76,7 +76,7 @@ function App() {
       setCsv(data.csv || '');
       setStatus('done');
     } catch (requestError) {
-      setError(requestError.message);
+      setError(getRequestErrorMessage(requestError));
       setStatus('error');
     }
   }
@@ -222,6 +222,25 @@ function App() {
       </section>
     </main>
   );
+}
+
+async function parseJsonResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: `Unexpected response from the scraper API (${response.status}).` };
+  }
+}
+
+function getRequestErrorMessage(error) {
+  if (error instanceof TypeError) {
+    return `Could not reach the scraper API at ${API_BASE_URL}. Check that the server is running and that this page is allowed by CORS.`;
+  }
+
+  return error.message || 'Scrape failed';
 }
 
 createRoot(document.getElementById('root')).render(<App />);
