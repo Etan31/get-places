@@ -5,6 +5,8 @@ const MAPS_BASE_URL = 'https://www.google.com/maps/search/';
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36';
 
+const CONCURRENCY = Math.max(1, Number(process.env.SCRAPER_CONCURRENCY || 5));
+
 export async function runPlaceScrape(
   { city, category, keyword, limit },
   { onEvent = () => {}, isCancelled = () => false } = {}
@@ -19,47 +21,73 @@ export async function runPlaceScrape(
       locale: 'en-US',
       viewport: { width: 1365, height: 900 }
     });
-    const page = await context.newPage();
-    page.setDefaultTimeout(12_000);
+    const searchPage = await context.newPage();
+    searchPage.setDefaultTimeout(12_000);
 
     onEvent({ type: 'status', message: `Searching Google Maps for "${keyword} in ${city}"...` });
-    const places = await collectPlaces(page, `${keyword} in ${city}`, limit, isCancelled);
-    onEvent({ type: 'status', message: `Found ${places.length} place${places.length === 1 ? '' : 's'}, checking each one...` });
+    const places = await collectPlaces(searchPage, `${keyword} in ${city}`, limit, isCancelled);
+    onEvent({
+      type: 'status',
+      message: `Found ${places.length} place${places.length === 1 ? '' : 's'}, checking them now (${Math.min(CONCURRENCY, places.length) || 1} at a time)...`
+    });
 
-    const rows = [];
-    const seenNames = new Set();
-
-    for (const place of places) {
-      if (rows.length >= limit || isCancelled()) break;
-
-      const details = await scrapePlaceDetails(page, place.url);
-      const shopName = clean(details.shopName || place.name);
-      if (!shopName || seenNames.has(shopName.toLowerCase())) continue;
-
-      seenNames.add(shopName.toLowerCase());
-      const webSignals = details.website ? await scrapeWebsiteSignals(context, details.website) : {};
-
-      const row = {
-        shopName,
-        email: webSignals.email || DASH,
-        number: clean(details.number) || DASH,
-        accountLink: webSignals.accountLink || DASH,
-        category: clean(details.category) || keyword || category,
-        location: clean(details.location) || city
-      };
-
-      rows.push(row);
-      onEvent({ type: 'row', row, index: rows.length, total: limit });
-
-      if (rows.length < limit && !isCancelled()) {
-        await page.waitForTimeout(randomDelay(1_200, 2_600));
-      }
-    }
-
-    return rows;
+    return await scrapePlacesConcurrently(context, places, { city, category, keyword, limit, onEvent, isCancelled });
   } finally {
     await browser.close();
   }
+}
+
+async function scrapePlacesConcurrently(context, places, { city, category, keyword, limit, onEvent, isCancelled }) {
+  const rows = [];
+  const seenNames = new Set();
+  let cursor = 0;
+  let committed = 0;
+  const workerCount = Math.min(CONCURRENCY, places.length) || 1;
+
+  async function worker() {
+    const page = await context.newPage();
+    page.setDefaultTimeout(12_000);
+
+    try {
+      while (!isCancelled() && committed < limit) {
+        const place = places[cursor];
+        cursor += 1;
+        if (!place) break;
+
+        const details = await scrapePlaceDetails(page, place.url);
+        const shopName = clean(details.shopName || place.name);
+        if (!shopName || seenNames.has(shopName.toLowerCase())) continue;
+        if (committed >= limit) break;
+
+        seenNames.add(shopName.toLowerCase());
+        committed += 1;
+
+        const webSignals = details.website ? await scrapeWebsiteSignals(context, details.website) : {};
+
+        const row = {
+          shopName,
+          email: webSignals.email || DASH,
+          number: clean(details.number) || DASH,
+          accountLink: webSignals.accountLink || DASH,
+          category: clean(details.category) || keyword || category,
+          location: clean(details.location) || city,
+          mapsUrl: place.url
+        };
+
+        rows.push(row);
+        onEvent({ type: 'row', row, index: rows.length, total: limit });
+
+        if (committed < limit && !isCancelled()) {
+          await page.waitForTimeout(randomDelay(1_200, 2_600));
+        }
+      }
+    } finally {
+      await page.close();
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return rows;
 }
 
 function randomDelay(min, max) {

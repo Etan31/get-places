@@ -4,7 +4,8 @@ const COLUMNS = [
   ['number', 'Number'],
   ['accountLink', 'Account Link(FB, Tiktok, IG)'],
   ['category', 'Category'],
-  ['location', 'Location']
+  ['location', 'Location'],
+  ['mapsUrl', 'Google Maps Link']
 ];
 
 export function toCsv(rows) {

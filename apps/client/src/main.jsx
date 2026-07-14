@@ -194,12 +194,13 @@ function App() {
                 <th>Account Link(FB, Tiktok, IG)</th>
                 <th>Category</th>
                 <th>Location</th>
+                <th>Google Maps</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="empty-row">
+                  <td colSpan="7" className="empty-row">
                     No rows yet
                   </td>
                 </tr>
@@ -220,6 +221,15 @@ function App() {
                     </td>
                     <td>{row.category}</td>
                     <td>{row.location}</td>
+                    <td>
+                      {row.mapsUrl?.startsWith('http') ? (
+                        <a href={row.mapsUrl} target="_blank" rel="noreferrer">
+                          Open
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
