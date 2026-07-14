@@ -4,19 +4,30 @@ node_modules
 .gitignore
 .env
 .env.local
-.DS_Store
-npm-debug.log
-yarn-debug.log
-yarn-error.log
 dist
 build
 coverage
-.next
 .vercel
+apps/client/src
+apps/client/public
+apps/client/index.html
+apps/client/.env.example
+docs
+api
+*.md
+vercel.json
 
 # Not needed for the server image - keeps the build context small
-# (a smaller context is also what fixed the "unknown file mode" tar error)
-apps/client
+# (a smaller context is also what fixed the "unknown file mode" tar error).
+# NOTE: apps/client/package.json must stay reachable (not excluded) - the
+# Dockerfile copies it so `pnpm install --frozen-lockfile` can see the whole
+# workspace graph. Docker won't let a later "!" re-include a file whose
+# parent directory is already excluded, so exclude client's subpaths
+# individually instead of the whole apps/client folder.
+apps/client/src
+apps/client/public
+apps/client/index.html
+apps/client/.env.example
 docs
 api
 *.md

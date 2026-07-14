@@ -1,3 +1,4 @@
+
 # syntax = docker/dockerfile:1
 
 ARG NODE_VERSION=22.20.0
@@ -12,17 +13,17 @@ RUN npm install -g pnpm@$PNPM_VERSION
 
 FROM base AS build
 
-# System deps needed to build native node modules and run Playwright's browser install
+# System deps needed to build native node modules and run P
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential python-is-python3
+    apt-get install --no-install-recommends -y build-essent
 
-# Copy only the workspace manifests first (better layer caching, and keeps
+# Copy only the workspace manifests first (better layer cac
 # the install step reproducible from the lockfile without pulling in source).
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/client/package.json ./apps/client/
 COPY apps/server/package.json ./apps/server/
 
-# Install just the server's dependency subtree (skips client deps like react/vite)
+# Install just the server's dependency subtree (skips clien
 RUN pnpm install --frozen-lockfile --filter @get-places/server...
 
 # Now copy the actual server source
