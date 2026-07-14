@@ -16,9 +16,9 @@ This is the **easiest and most reliable** for a Playwright-based scraper.
 
 2. **Set environment variables** in Vercel project settings:
    ```
-   VITE_API_BASE_URL=https://get-places-server.fly.dev
+   VITE_API_BASE_URL=https://get-places.fly.dev
    ```
-   (Replace with your Fly.io URL after deploying the server)
+   (Replace `get-places` with your actual Fly.io app name/hostname after deploying the server)
 
 3. **That's it!** Frontend is live.
 
@@ -40,42 +40,37 @@ Fly.io is better suited for long-running scraping tasks than Vercel serverless.
    flyctl auth login
    ```
 
-3. **Navigate to project root and initialize Fly.io**
+3. **Navigate to project root and initialize Fly.io** (`fly.toml` and `Dockerfile` live at the
+   repo root, not inside `apps/server/` — the Dockerfile is monorepo-aware and only installs/copies
+   what the server needs, so the app must be deployed from the root)
    ```bash
    flyctl launch
    ```
-   - Name: `get-places-server` (or your choice)
+   - Name: `get-places` (or your choice)
    - Region: pick one close to you
    - Database: No
    - When prompted to deploy: say "Yes"
 
-4. **Update `apps/server/package.json`** — make sure start command exists:
-   ```json
-   {
-     "scripts": {
-       "dev": "node --watch src/server.js",
-       "start": "node src/server.js"
-     }
-   }
-   ```
+   If `fly.toml` already exists (you ran `launch` before), skip straight to `flyctl deploy` instead
+   — the app is already registered, running `launch` again can prompt to reconfigure it.
 
-5. **Deploy to Fly.io**
+4. **Deploy to Fly.io**
    ```bash
    flyctl deploy
    ```
 
-6. **Get your public URL**
+5. **Get your public URL**
    ```bash
    flyctl info
    ```
-   Copy the URL (e.g., `https://get-places-server.fly.dev`)
+   Copy the hostname (e.g., `https://get-places.fly.dev`)
 
-7. **Update Vercel env var**
+6. **Update Vercel env var**
    - Go to Vercel project settings
-   - Set `VITE_API_BASE_URL=https://get-places-server.fly.dev`
+   - Set `VITE_API_BASE_URL=https://get-places.fly.dev` (your actual hostname)
    - Redeploy frontend
 
-8. **Done!** Both frontend and backend are live.
+7. **Done!** Both frontend and backend are live.
 
 ---
 
@@ -135,7 +130,7 @@ Vercel serverless functions work with Playwright, but have constraints:
 
 ### Vercel (Frontend)
 ```
-VITE_API_BASE_URL=https://get-places-server.fly.dev
+VITE_API_BASE_URL=https://get-places.fly.dev
 ```
 
 ### Fly.io (Backend)
@@ -165,6 +160,17 @@ SCRAPER_MAX_RESULTS=50
 - First request to Vercel serverless takes 10-20s (Playwright download)
 - Subsequent requests are faster (cached)
 - Fly.io is much faster for repeated requests
+
+### `archive/tar: unknown file mode ?rwxr-xr-x` during `flyctl deploy`/`launch`
+- This happens when the Docker build context includes the whole monorepo (client app source,
+  docs, node_modules, etc.) instead of just what the server needs — something in that larger
+  context trips the tar archiver used to upload the build context.
+- Fixed by tightening `.dockerignore` (excludes `apps/client`, `docs`, `api`, `*.md`, `vercel.json`,
+  `node_modules`) and rewriting the root `Dockerfile` to only `COPY` the workspace manifests +
+  `apps/server` — never the whole repo (`COPY . .`).
+- If it recurs: check for symlinks/reparse points outside `node_modules` in the repo
+  (`Get-ChildItem -Recurse -Force | Where-Object { $_.Attributes -band [System.IO.FileAttributes]::ReparsePoint }`
+  on Windows), and consider `flyctl deploy --local-only` to bypass the remote Depot builder.
 
 ---
 

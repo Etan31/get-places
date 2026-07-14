@@ -17,6 +17,11 @@ git push
 ```
 
 ### Backend (Fly.io)
+
+`fly.toml` and `Dockerfile` live at the **project root** (that's where `flyctl launch` was run,
+and where it registered the app - don't move them into `apps/server/`, the Dockerfile is
+monorepo-aware and only copies what the server needs).
+
 ```bash
 # 1. Install Fly CLI
 # macOS: brew install flyctl
@@ -28,10 +33,14 @@ flyctl auth signup
 # or
 flyctl auth login
 
-# 3. Deploy from project root
+# 3. If you already ran `flyctl launch` once, the app is registered -
+#    just redeploy with the fixed Dockerfile/.dockerignore:
 cd /path/to/get-places
-flyctl launch
-# Name: get-places-server
+flyctl deploy
+
+# First time only (no fly.toml/app registered yet), use launch instead:
+# flyctl launch
+# Name: get-places (or your choice)
 # Region: pick one close to you
 # Dockerfile: Yes (auto-detected)
 # Postgres: No
@@ -39,15 +48,20 @@ flyctl launch
 
 # 4. Get your public URL
 flyctl info
-# Look for "app hostname" - copy it
+# Look for "Hostname" - copy it
 
 # 5. Update Vercel environment variable with the URL from step 4
 # Go to Vercel project settings → Environment Variables
-# VITE_API_BASE_URL=https://get-places-server.fly.dev
-# (or whatever your fly.io URL is)
+# VITE_API_BASE_URL=https://get-places.fly.dev
+# (or whatever your fly.io hostname is)
 ```
 
 **Done! Both are live.**
+
+> If you hit `archive/tar: unknown file mode` during `flyctl deploy`/`launch`: this was caused by
+> the build context including the entire monorepo (client app, docs, etc.) instead of just the
+> server. `.dockerignore` now excludes `apps/client`, `docs`, `api`, `*.md`, and `vercel.json` -
+> re-run `flyctl deploy` after pulling these changes.
 
 ---
 

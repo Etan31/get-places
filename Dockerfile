@@ -1,49 +1,40 @@
 # syntax = docker/dockerfile:1
 
-# Adjust NODE_VERSION as desired
 ARG NODE_VERSION=22.20.0
 FROM node:${NODE_VERSION}-slim AS base
 
-LABEL fly_launch_runtime="Node.js"
-
-# Node.js app lives here
 WORKDIR /app
-
-# Set production environment
 ENV NODE_ENV="production"
 
-# Install pnpm
 ARG PNPM_VERSION=9.15.4
 RUN npm install -g pnpm@$PNPM_VERSION
 
 
-# Throw-away build stage to reduce size of final image
 FROM base AS build
 
-# Install packages needed to build node modules
+# System deps needed to build native node modules and run Playwright's browser install
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
+    apt-get install --no-install-recommends -y build-essential python-is-python3
 
-# Install node modules
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod=false
+# Copy only the workspace manifests first (better layer caching, and keeps
+# the install step reproducible from the lockfile without pulling in source).
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/client/package.json ./apps/client/
+COPY apps/server/package.json ./apps/server/
 
-# Copy application code
-COPY . .
+# Install just the server's dependency subtree (skips client deps like react/vite)
+RUN pnpm install --frozen-lockfile --filter @get-places/server...
 
-# Build application
-RUN pnpm run build
+# Now copy the actual server source
+COPY apps/server ./apps/server
 
-# Remove development dependencies
-RUN pnpm prune --prod
+# Install the Playwright browser binary the scraper needs
+RUN cd apps/server && pnpm exec playwright install --with-deps chromium
 
 
-# Final stage for app image
 FROM base
 
-# Copy built application
 COPY --from=build /app /app
 
-# Start the server by default, this can be overwritten at runtime
-EXPOSE 3000
-CMD [ "pnpm", "run", "start" ]
+EXPOSE 3001
+CMD ["node", "apps/server/src/server.js"]
