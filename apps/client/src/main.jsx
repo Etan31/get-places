@@ -192,6 +192,7 @@ function App() {
                 <th>Email</th>
                 <th>Number</th>
                 <th>Account Link(FB, Tiktok, IG)</th>
+                <th>Facebook</th>
                 <th>Category</th>
                 <th>Location</th>
                 <th>Google Maps</th>
@@ -200,7 +201,7 @@ function App() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="empty-row">
+                  <td colSpan="8" className="empty-row">
                     No rows yet
                   </td>
                 </tr>
@@ -217,6 +218,15 @@ function App() {
                         </a>
                       ) : (
                         row.accountLink
+                      )}
+                    </td>
+                    <td>
+                      {row.facebookLink?.startsWith('http') ? (
+                        <a href={row.facebookLink} target="_blank" rel="noreferrer">
+                          {row.facebookLink}
+                        </a>
+                      ) : (
+                        row.facebookLink || '-'
                       )}
                     </td>
                     <td>{row.category}</td>

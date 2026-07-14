@@ -69,6 +69,7 @@ async function scrapePlacesConcurrently(context, places, { city, category, keywo
           email: webSignals.email || DASH,
           number: clean(details.number) || DASH,
           accountLink: webSignals.accountLink || DASH,
+          facebookLink: webSignals.facebookLink || DASH,
           category: clean(details.category) || keyword || category,
           location: clean(details.location) || city,
           mapsUrl: place.url
@@ -175,14 +176,15 @@ async function scrapeWebsiteSignals(context, websiteUrl) {
 
   try {
     const urlsToVisit = await getWebsitePagesToCheck(page, websiteUrl);
-    const signals = { email: '', accountLink: '' };
+    const signals = { email: '', accountLink: '', facebookLink: '' };
 
     for (const url of urlsToVisit) {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 8_000 }).catch(() => {});
       const pageSignals = await extractSignals(page);
       signals.email ||= pageSignals.email;
       signals.accountLink ||= pageSignals.accountLink;
-      if (signals.email && signals.accountLink) break;
+      signals.facebookLink ||= pageSignals.facebookLink;
+      if (signals.email && signals.accountLink && signals.facebookLink) break;
     }
 
     return signals;
@@ -222,12 +224,14 @@ async function extractSignals(page) {
     const emailMatches = `${html} ${text}`.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
     const anchors = Array.from(document.querySelectorAll('a[href]')).map((anchor) => anchor.href);
     const socialLink = anchors.find((href) => /facebook\.com|instagram\.com|tiktok\.com/i.test(href));
+    const facebookLink = anchors.find((href) => /facebook\.com/i.test(href));
     const mailto = anchors.find((href) => href.startsWith('mailto:'));
     const email = cleanEmail(mailto?.replace(/^mailto:/i, '').split('?')[0] || emailMatches[0] || '');
 
     return {
       email,
-      accountLink: socialLink || ''
+      accountLink: socialLink || '',
+      facebookLink: facebookLink || ''
     };
   });
 }

@@ -3,6 +3,7 @@ const COLUMNS = [
   ['email', 'Email'],
   ['number', 'Number'],
   ['accountLink', 'Account Link(FB, Tiktok, IG)'],
+  ['facebookLink', 'Facebook Link'],
   ['category', 'Category'],
   ['location', 'Location'],
   ['mapsUrl', 'Google Maps Link']

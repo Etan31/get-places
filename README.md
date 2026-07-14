@@ -41,7 +41,7 @@ found instead of waiting for the whole batch:
 ```json
 {"type":"status","message":"Searching Google Maps for \"coffee shop in Cebu City\"..."}
 {"type":"status","message":"Found 12 places, checking each one..."}
-{"type":"row","row":{"shopName":"Example Coffee","email":"-","number":"-","accountLink":"https://www.instagram.com/example","category":"coffee shop","location":"Cebu City","mapsUrl":"https://www.google.com/maps/place/Example+Coffee/..."},"index":1,"total":50}
+{"type":"row","row":{"shopName":"Example Coffee","email":"-","number":"-","accountLink":"https://www.instagram.com/example","facebookLink":"https://www.facebook.com/example","category":"coffee shop","location":"Cebu City","mapsUrl":"https://www.google.com/maps/place/Example+Coffee/..."},"index":1,"total":50}
 {"type":"done","count":12,"csv":"Shop Name,Email,Number,..."}
 ```
 
