@@ -22,6 +22,21 @@ export async function runPlaceScrape(
       locale: 'en-US',
       viewport: { width: 1365, height: 900 }
     });
+
+    // Google gates Maps behind a GDPR consent redirect (consent.google.com) for
+    // EU-detected IPs (e.g. Fly's Amsterdam region), rendered in whatever local
+    // language it infers from the IP - not our Accept-Language header. Rather
+    // than chase localized button text, pre-set the cookie Google itself sets
+    // once consent is given, so it skips the interstitial entirely.
+    await context.addCookies([
+      {
+        name: 'CONSENT',
+        value: `YES+cb.20240101-00-p0.en+FX+${Math.floor(100 + Math.random() * 800)}`,
+        domain: '.google.com',
+        path: '/'
+      }
+    ]);
+
     const searchPage = await context.newPage();
     searchPage.setDefaultTimeout(12_000);
 
@@ -259,10 +274,19 @@ async function extractSignals(page) {
 }
 
 async function acceptConsentIfPresent(page) {
+  // Fallback for whatever the CONSENT cookie doesn't cover - Google renders this
+  // wall in whatever language it infers from the request's IP, not our
+  // Accept-Language header, so match the common EU phrasings too.
   const consentButtons = [
     'button:has-text("Accept all")',
     'button:has-text("I agree")',
-    'button:has-text("Reject all")'
+    'button:has-text("Reject all")',
+    'button:has-text("Alles accepteren")', // Dutch
+    'button:has-text("Tout accepter")', // French
+    'button:has-text("Alle akzeptieren")', // German
+    'button:has-text("Aceptar todo")', // Spanish
+    'button:has-text("Accetta tutto")', // Italian
+    'button:has-text("Aceitar tudo")' // Portuguese
   ];
 
   for (const selector of consentButtons) {
