@@ -123,10 +123,10 @@ Default theme for any new project's logo/favicon: a one- or two-letter monogram 
 - **Favicon caching:** after changing the favicon, a normal/hard refresh often won't show it — browsers cache favicons separately. Verify by hitting the SVG URL directly in a new tab or an incognito window.
 
 **Implemented record (fill in per project):**
-- Files:
-- Colors:
-- Font:
-- Shape:
+- Files: `apps/client/public/favicon.svg` (standalone snapshot); in-app badge is the `.brand-badge`/`.brand-mark` markup in `apps/client/src/main.jsx`, styled in `apps/client/src/styles.css`.
+- Colors: favicon bg `#0b1220` (hardcoded navy-black) with letter `#38bdf8`; in-app badge uses the live tokens `--color-accent` (`#0369a1`) on `--color-primary` (`#0f172a`) sidebar.
+- Font: favicon uses `Arial, Helvetica, sans-serif` (safe fallback, no webfont in SVG context); in-app badge uses the real project font `Fira Sans`, weight 700.
+- Shape: squircle, `rx` = 25% of box side (16/64 in the favicon; 10px radius on the 36px in-app badge, ~28%).
 
 ### Database (Supabase / Postgres)
 - Use migrations for schema changes; never alter production directly.
