@@ -140,7 +140,28 @@ async function collectPlaces(page, query, limit, isCancelled = () => false) {
     await page.waitForTimeout(randomDelay(700, 1_300));
   }
 
+  if (places.size === 0) {
+    await logEmptySearchDiagnostics(page, searchUrl);
+  }
+
   return Array.from(places.values()).slice(0, limit);
+}
+
+async function logEmptySearchDiagnostics(page, searchUrl) {
+  const diagnostics = await page
+    .evaluate(() => ({
+      title: document.title,
+      bodySnippet: (document.body?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+      hasFeed: !!document.querySelector('div[role="feed"]'),
+      hasPlaceLinks: !!document.querySelector('a[href*="/maps/place/"]')
+    }))
+    .catch((error) => ({ evaluateError: String(error) }));
+
+  console.error('No places found for search:', {
+    searchUrl,
+    finalUrl: page.url(),
+    ...diagnostics
+  });
 }
 
 async function scrapePlaceDetails(page, url) {
