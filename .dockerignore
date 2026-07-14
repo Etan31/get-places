@@ -8,14 +8,6 @@ dist
 build
 coverage
 .vercel
-apps/client/src
-apps/client/public
-apps/client/index.html
-apps/client/.env.example
-docs
-api
-*.md
-vercel.json
 
 # Not needed for the server image - keeps the build context small
 # (a smaller context is also what fixed the "unknown file mode" tar error).

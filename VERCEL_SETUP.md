@@ -11,7 +11,12 @@ This is the **easiest and most reliable** for a Playwright-based scraper.
 1. **Connect GitHub repo to Vercel**
    - Go to https://vercel.com/import
    - Select your GitHub repo
-   - Vercel auto-detects the monorepo structure and builds `apps/client`
+   - **Set Root Directory to `apps/client`** (in the import screen, or afterward via
+     Project Settings → General → Root Directory). This project has no `vercel.json` -
+     it relies on Vercel's zero-config Vite detection, which only works from
+     `apps/client` (that's where `index.html` and the Vite `package.json` live). Vercel
+     still auto-runs `pnpm install` from the true repo root (it walks up to find
+     `pnpm-lock.yaml`), so the pnpm workspace resolves correctly either way.
    - Click "Deploy"
 
 2. **Set environment variables** in Vercel project settings:
@@ -46,13 +51,16 @@ Fly.io is better suited for long-running scraping tasks than Vercel serverless.
    ```bash
    flyctl launch
    ```
-   - Name: `get-places` (or your choice)
-   - Region: pick one close to you
+   - flyctl detects the existing `fly.toml`/`Dockerfile` and offers to reuse them — accept
+     that rather than letting it regenerate fresh config
+   - Name: `get-places` (must match `fly.toml`'s `app =` to keep the same URL)
+   - Region: `sin` (or pick one close to you)
    - Database: No
    - When prompted to deploy: say "Yes"
 
-   If `fly.toml` already exists (you ran `launch` before), skip straight to `flyctl deploy` instead
-   — the app is already registered, running `launch` again can prompt to reconfigure it.
+   If the app is already registered on Fly's side (not deleted), skip straight to
+   `flyctl deploy` instead — running `launch` again on an existing app can prompt to
+   reconfigure it unnecessarily.
 
 4. **Deploy to Fly.io**
    ```bash
@@ -160,6 +168,21 @@ SCRAPER_MAX_RESULTS=50
 - First request to Vercel serverless takes 10-20s (Playwright download)
 - Subsequent requests are faster (cached)
 - Fly.io is much faster for repeated requests
+
+### "No Output Directory named 'dist' found" on Vercel
+- This means Vercel's Root Directory setting doesn't match where `vercel.json` (if any)
+  expects output. This project has no `vercel.json` on purpose — set **Project Settings
+  → General → Root Directory** to `apps/client` and let Vercel's Vite auto-detection
+  handle build/output. A root-level `vercel.json` is silently ignored whenever Root
+  Directory points at a subfolder, since Vercel looks for `vercel.json` *inside* that
+  subfolder instead - which is exactly what caused this error.
+
+### `apt-get install` fails / `vite: not found` / build succeeds but nothing works
+- Double-check `Dockerfile` for truncated lines before assuming a config problem — pasting
+  it into a web textarea (Fly's launch UI, GitHub's web editor, etc.) can silently cut long
+  lines mid-word, and the result still looks like valid-ish Docker syntax at a glance. Grep
+  for the actual package names (`build-essential`, `python-is-python3`) to confirm they're
+  intact rather than eyeballing it.
 
 ### `archive/tar: unknown file mode ?rwxr-xr-x` during `flyctl deploy`/`launch`
 - This happens when the Docker build context includes the whole monorepo (client app source,

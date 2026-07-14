@@ -3,6 +3,14 @@
 ## Option A: Vercel Frontend + Fly.io Backend (Recommended)
 
 ### Frontend (Vercel)
+
+There's no `vercel.json` — this project relies entirely on Vercel's own Vite
+auto-detection. That only works correctly if **Project Settings → General → Root
+Directory** is set to `apps/client` (Vercel then finds the root `pnpm-lock.yaml`
+automatically for install, and auto-detects the Vite build/output from
+`apps/client/package.json`). If Root Directory is left blank, Vercel builds from the
+monorepo root and won't find `apps/client`'s `index.html`.
+
 ```bash
 # 1. Push to GitHub
 git add .
@@ -11,9 +19,11 @@ git push
 
 # 2. Go to https://vercel.com/import
 # 3. Select your GitHub repo
-# 4. Vercel auto-deploys
-# 5. Add env var in Vercel project settings:
-#    VITE_API_BASE_URL=https://get-places-server.fly.dev
+# 4. IMPORTANT: set Root Directory = apps/client in the import screen
+#    (or Project Settings → General → Root Directory afterward)
+# 5. Vercel auto-deploys
+# 6. Add env var in Vercel project settings:
+#    VITE_API_BASE_URL=https://get-places.fly.dev
 ```
 
 ### Backend (Fly.io)
@@ -33,18 +43,21 @@ flyctl auth signup
 # or
 flyctl auth login
 
-# 3. If you already ran `flyctl launch` once, the app is registered -
-#    just redeploy with the fixed Dockerfile/.dockerignore:
+# 3. Register the app (fly.toml/Dockerfile already exist in this repo, but if
+#    the app was deleted from Fly's side - or this is the first deploy - it
+#    needs to be re-registered before `deploy` will work):
 cd /path/to/get-places
-flyctl deploy
-
-# First time only (no fly.toml/app registered yet), use launch instead:
-# flyctl launch
-# Name: get-places (or your choice)
-# Region: pick one close to you
-# Dockerfile: Yes (auto-detected)
+flyctl launch
+# flyctl detects the existing fly.toml/Dockerfile and offers to reuse them -
+# accept that (don't let it regenerate a fresh Dockerfile). If it asks to
+# overwrite/replace, decline the overwrite and keep the existing files.
+# Name: get-places (must match fly.toml's `app =` if you want the same URL)
+# Region: sin (or pick one close to you)
 # Postgres: No
 # Deploy: Yes (wait 2-3 min)
+
+# If the app is already registered on Fly's side, skip straight to:
+# flyctl deploy
 
 # 4. Get your public URL
 flyctl info
