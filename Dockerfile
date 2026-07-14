@@ -39,5 +39,11 @@ FROM base
 
 COPY --from=build /app /app
 
+# The browser binary itself is already inside /app (copied above), but the
+# apt-installed system libraries `--with-deps` added in the build stage don't
+# carry over to this fresh stage - install just the runtime shared libs
+# Chromium needs (libglib2.0-0, libnss3, etc.), not the browser again.
+RUN cd apps/server && pnpm exec playwright install-deps chromium
+
 EXPOSE 3001
 CMD ["node", "apps/server/src/server.js"]
