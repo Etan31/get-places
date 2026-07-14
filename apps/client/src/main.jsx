@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Download, MapPin, Play, Scissors, Search, Store } from 'lucide-react';
+import { Download, Loader2, MapPin, Play, Scissors, Search, Store } from 'lucide-react';
 import './styles.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
@@ -103,17 +103,28 @@ function App() {
     <main className="app-shell">
       <section className="scraper-panel" aria-labelledby="page-title">
         <div className="intro">
+          <div className="brand-mark">
+            <span className="brand-badge" aria-hidden="true">
+              GP
+            </span>
+            <span className="brand-name">Get Places</span>
+          </div>
           <p className="eyebrow">Personal local lead finder</p>
           <h1 id="page-title">Get 50 public business leads by city.</h1>
           <p>
-            Search a city, choose a category, preview the rows, then download a CSV with shop
-            names, contacts, social links, category, and location.
+            Search a city, choose a category, preview the rows, then download a
+            CSV with shop names, contacts, social links, category, and location.
           </p>
         </div>
 
         <form className="scrape-form" onSubmit={handleSubmit}>
-          <label>
-            City
+          <div>
+            <div className="input-label">
+              <label>City </label>{" "}
+              <span className="required-mark" aria-hidden="true">
+                *
+              </span>
+            </div>
             <div className="input-shell">
               <Search size={18} aria-hidden="true" />
               <input
@@ -121,13 +132,17 @@ function App() {
                 onChange={(event) => setCity(event.target.value)}
                 placeholder="Cebu City, Manila, Davao..."
                 autoComplete="address-level2"
+                aria-required="true"
               />
             </div>
-          </label>
+          </div>
 
           <label>
             Category
-            <select value={category} onChange={(event) => handleCategoryChange(event.target.value)}>
+            <select
+              value={category}
+              onChange={(event) => handleCategoryChange(event.target.value)}
+            >
               {CATEGORIES.map((item) => (
                 <option key={item.label} value={item.label}>
                   {item.label}
@@ -138,7 +153,10 @@ function App() {
 
           <label>
             Business type
-            <select value={keyword} onChange={(event) => setKeyword(event.target.value)}>
+            <select
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+            >
               {selectedCategory.keywords.map((item) => (
                 <option key={item} value={item}>
                   {item}
@@ -159,43 +177,65 @@ function App() {
           </label>
 
           <button className="primary-action" type="submit" disabled={!canRun}>
-            <Play size={18} aria-hidden="true" />
-            {status === 'loading' ? `Scraping... (${rows.length}/${limit})` : 'Start scrape'}
+            {status === "loading" ? (
+              <Loader2 size={18} aria-hidden="true" className="spin-icon" />
+            ) : (
+              <Play size={18} aria-hidden="true" />
+            )}
+            {status === "loading"
+              ? `Scraping... (${rows.length}/${limit})`
+              : "Start scrape"}
           </button>
         </form>
       </section>
 
-      <section className="results-band" aria-live="polite">
+      <section className="results-band">
         <div className="result-topline">
           <div>
             <span className="metric">{rows.length}</span>
             <span className="metric-label">rows ready</span>
           </div>
-          <button className="download-action" type="button" onClick={downloadCsv} disabled={!csv}>
+          <button
+            className="download-action"
+            type="button"
+            onClick={downloadCsv}
+            disabled={!csv}
+          >
             <Download size={18} aria-hidden="true" />
             CSV
           </button>
         </div>
 
-        {error && <p className="status-message error">{error}</p>}
-        {status === 'loading' && (
-          <p className="status-message">{progressMessage || 'Collecting public listings and checking websites for contacts.'}</p>
-        )}
-        {status === 'done' && progressMessage && <p className="status-message">{progressMessage}</p>}
-        {status === 'idle' && <p className="status-message">Your scrape results will appear here.</p>}
+        <div className="status-region" aria-live="polite" aria-atomic="true">
+          {error && <p className="status-message error">{error}</p>}
+          {status === "loading" && (
+            <p className="status-message">
+              {progressMessage ||
+                "Collecting public listings and checking websites for contacts."}
+            </p>
+          )}
+          {status === "done" && progressMessage && (
+            <p className="status-message">{progressMessage}</p>
+          )}
+          {status === "idle" && (
+            <p className="status-message">
+              Your scrape results will appear here.
+            </p>
+          )}
+        </div>
 
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Shop Name</th>
-                <th>Email</th>
-                <th>Number</th>
-                <th>Account Link(FB, Tiktok, IG)</th>
-                <th>Facebook</th>
-                <th>Category</th>
-                <th>Location</th>
-                <th>Google Maps</th>
+                <th scope="col">Shop Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Number</th>
+                <th scope="col">Account Link(FB, Tiktok, IG)</th>
+                <th scope="col">Facebook</th>
+                <th scope="col">Category</th>
+                <th scope="col">Location</th>
+                <th scope="col">Google Maps</th>
               </tr>
             </thead>
             <tbody>
@@ -212,8 +252,12 @@ function App() {
                     <td>{row.email}</td>
                     <td>{row.number}</td>
                     <td>
-                      {row.accountLink.startsWith('http') ? (
-                        <a href={row.accountLink} target="_blank" rel="noreferrer">
+                      {row.accountLink.startsWith("http") ? (
+                        <a
+                          href={row.accountLink}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           {row.accountLink}
                         </a>
                       ) : (
@@ -221,23 +265,27 @@ function App() {
                       )}
                     </td>
                     <td>
-                      {row.facebookLink?.startsWith('http') ? (
-                        <a href={row.facebookLink} target="_blank" rel="noreferrer">
+                      {row.facebookLink?.startsWith("http") ? (
+                        <a
+                          href={row.facebookLink}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           {row.facebookLink}
                         </a>
                       ) : (
-                        row.facebookLink || '-'
+                        row.facebookLink || "-"
                       )}
                     </td>
                     <td>{row.category}</td>
                     <td>{row.location}</td>
                     <td>
-                      {row.mapsUrl?.startsWith('http') ? (
+                      {row.mapsUrl?.startsWith("http") ? (
                         <a href={row.mapsUrl} target="_blank" rel="noreferrer">
                           Open
                         </a>
                       ) : (
-                        '-'
+                        "-"
                       )}
                     </td>
                   </tr>
