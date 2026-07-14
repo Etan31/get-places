@@ -69,11 +69,12 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 28px;
+  gap: 24px;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
-  padding: 40px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 32px;
   background: var(--color-primary);
   color: var(--color-on-primary);
 }
@@ -82,7 +83,7 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .brand-badge {
@@ -110,7 +111,7 @@ a:focus-visible {
 }
 
 .eyebrow {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   color: #7dd3fc;
   font-size: 0.76rem;
   font-weight: 700;
@@ -121,22 +122,22 @@ a:focus-visible {
 h1 {
   margin: 0;
   color: var(--color-on-primary);
-  font-size: clamp(2rem, 3.4vw, 3.4rem);
+  font-size: clamp(1.6rem, 2.6vw + 1rem, 3.4rem);
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.1;
   letter-spacing: -0.01em;
 }
 
 .intro p:last-child {
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   color: var(--color-on-primary-muted);
-  font-size: 0.98rem;
-  line-height: 1.65;
+  font-size: clamp(0.88rem, 0.6vw + 0.75rem, 0.98rem);
+  line-height: 1.6;
 }
 
 .scrape-form {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 label {
@@ -290,12 +291,12 @@ button:disabled {
 .results-band {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  padding: 40px;
+  padding: 32px;
 }
 
 .result-topline {
@@ -310,7 +311,7 @@ button:disabled {
   display: block;
   font-family: var(--font-mono);
   color: var(--color-foreground);
-  font-size: 3rem;
+  font-size: clamp(2rem, 1.4vw + 1.6rem, 3rem);
   font-weight: 600;
   line-height: 1;
 }
@@ -397,22 +398,56 @@ tbody tr:hover {
   text-align: center;
 }
 
+/* Short viewports (e.g. laptops with browser chrome eating vertical space) -
+   the width-based breakpoint below doesn't catch this case, and without it
+   the scraper-panel's content can outgrow the fixed-height grid row. */
+@media (max-height: 700px) {
+  .scraper-panel {
+    gap: 16px;
+    padding: 24px 32px;
+  }
+
+  .brand-mark {
+    margin-bottom: 12px;
+  }
+
+  .intro p:last-child {
+    display: none;
+  }
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .scraper-panel {
-    padding: 24px;
-    gap: 20px;
+    max-height: 62vh;
+    padding: 20px;
+    gap: 16px;
   }
 
   .results-band {
-    padding: 20px 24px;
+    padding: 16px 20px;
   }
 
-  h1 {
-    font-size: clamp(1.7rem, 6vw, 2.4rem);
+  .intro p:last-child {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .scraper-panel {
+    max-height: 68vh;
+    padding: 16px;
+  }
+
+  .brand-mark {
+    margin-bottom: 12px;
+  }
+
+  .eyebrow {
+    display: none;
   }
 }

@@ -70,32 +70,36 @@ async function scrapePlacesConcurrently(context, places, { city, category, keywo
         cursor += 1;
         if (!place) break;
 
-        const details = await scrapePlaceDetails(page, place.url);
-        const shopName = clean(details.shopName || place.name);
-        if (!shopName || seenNames.has(shopName.toLowerCase())) continue;
-        if (committed >= limit) break;
+        try {
+          const details = await scrapePlaceDetails(page, place.url);
+          const shopName = clean(details.shopName || place.name);
+          if (!shopName || seenNames.has(shopName.toLowerCase())) continue;
+          if (committed >= limit) break;
 
-        seenNames.add(shopName.toLowerCase());
-        committed += 1;
+          seenNames.add(shopName.toLowerCase());
+          committed += 1;
 
-        const webSignals = details.website ? await scrapeWebsiteSignals(context, details.website) : {};
+          const webSignals = details.website ? await scrapeWebsiteSignals(context, details.website) : {};
 
-        const row = {
-          shopName,
-          email: webSignals.email || DASH,
-          number: clean(details.number) || DASH,
-          accountLink: webSignals.accountLink || DASH,
-          facebookLink: webSignals.facebookLink || DASH,
-          category: clean(details.category) || keyword || category,
-          location: clean(details.location) || city,
-          mapsUrl: place.url
-        };
+          const row = {
+            shopName,
+            email: webSignals.email || DASH,
+            number: clean(details.number) || DASH,
+            accountLink: webSignals.accountLink || DASH,
+            facebookLink: webSignals.facebookLink || DASH,
+            category: clean(details.category) || keyword || category,
+            location: clean(details.location) || city,
+            mapsUrl: place.url
+          };
 
-        rows.push(row);
-        onEvent({ type: 'row', row, index: rows.length, total: limit });
+          rows.push(row);
+          onEvent({ type: 'row', row, index: rows.length, total: limit });
 
-        if (committed < limit && !isCancelled()) {
-          await page.waitForTimeout(randomDelay(1_200, 2_600));
+          if (committed < limit && !isCancelled()) {
+            await page.waitForTimeout(randomDelay(1_200, 2_600));
+          }
+        } catch (error) {
+          console.error(`Skipping place (${place.url}):`, error.message);
         }
       }
     } finally {
@@ -181,7 +185,7 @@ async function logEmptySearchDiagnostics(page, searchUrl) {
 
 async function scrapePlaceDetails(page, url) {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 }).catch(() => {});
-  await page.waitForTimeout(1_200);
+  await page.waitForSelector('h1', { timeout: 5_000 }).catch(() => {});
 
   return page.evaluate(() => {
     const getText = (selector) => document.querySelector(selector)?.textContent?.trim() || '';
