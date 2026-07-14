@@ -32,6 +32,7 @@ function App() {
   const [csv, setCsv] = useState('');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
+  const [progressMessage, setProgressMessage] = useState('');
 
   const selectedCategory = useMemo(
     () => CATEGORIES.find((item) => item.label === category) || CATEGORIES[0],
@@ -54,6 +55,7 @@ function App() {
     setError('');
     setRows([]);
     setCsv('');
+    setProgressMessage('Starting scrape...');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/scrape`, {
@@ -67,14 +69,18 @@ function App() {
         })
       });
 
-      const data = await parseJsonResponse(response);
       if (!response.ok) {
+        const data = await parseJsonResponse(response);
         throw new Error(data.error || 'Scrape failed');
       }
 
-      setRows(data.rows || []);
-      setCsv(data.csv || '');
+      const { rows: finalRows, csv: finalCsv } = await readScrapeStream(response, setRows, setProgressMessage);
+
+      setCsv(finalCsv);
       setStatus('done');
+      if (finalRows.length === 0) {
+        setProgressMessage('No public listings found for that search.');
+      }
     } catch (requestError) {
       setError(getRequestErrorMessage(requestError));
       setStatus('error');
@@ -154,7 +160,7 @@ function App() {
 
           <button className="primary-action" type="submit" disabled={!canRun}>
             <Play size={18} aria-hidden="true" />
-            {status === 'loading' ? 'Scraping...' : 'Start scrape'}
+            {status === 'loading' ? `Scraping... (${rows.length}/${limit})` : 'Start scrape'}
           </button>
         </form>
       </section>
@@ -173,8 +179,9 @@ function App() {
 
         {error && <p className="status-message error">{error}</p>}
         {status === 'loading' && (
-          <p className="status-message">Collecting public listings and checking websites for contacts.</p>
+          <p className="status-message">{progressMessage || 'Collecting public listings and checking websites for contacts.'}</p>
         )}
+        {status === 'done' && progressMessage && <p className="status-message">{progressMessage}</p>}
         {status === 'idle' && <p className="status-message">Your scrape results will appear here.</p>}
 
         <div className="table-wrap">
@@ -222,6 +229,63 @@ function App() {
       </section>
     </main>
   );
+}
+
+async function readScrapeStream(response, setRows, setProgressMessage) {
+  const rows = [];
+  let csv = '';
+  let streamError = '';
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const data = await parseJsonResponse(response);
+    setRows(data.rows || []);
+    return { rows: data.rows || [], csv: data.csv || '' };
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex = buffer.indexOf('\n');
+    while (newlineIndex !== -1) {
+      const line = buffer.slice(0, newlineIndex).trim();
+      buffer = buffer.slice(newlineIndex + 1);
+      newlineIndex = buffer.indexOf('\n');
+      if (!line) continue;
+
+      const scrapeEvent = parseEventLine(line);
+      if (!scrapeEvent) continue;
+
+      if (scrapeEvent.type === 'status') {
+        setProgressMessage(scrapeEvent.message);
+      } else if (scrapeEvent.type === 'row') {
+        rows.push(scrapeEvent.row);
+        setRows([...rows]);
+        setProgressMessage(`Found ${scrapeEvent.index} of ${scrapeEvent.total} rows...`);
+      } else if (scrapeEvent.type === 'done') {
+        csv = scrapeEvent.csv || '';
+      } else if (scrapeEvent.type === 'error') {
+        streamError = scrapeEvent.message;
+      }
+    }
+  }
+
+  if (streamError) throw new Error(streamError);
+
+  return { rows, csv };
+}
+
+function parseEventLine(line) {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
 }
 
 async function parseJsonResponse(response) {

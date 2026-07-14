@@ -5,7 +5,10 @@ const MAPS_BASE_URL = 'https://www.google.com/maps/search/';
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36';
 
-export async function runPlaceScrape({ city, category, keyword, limit }) {
+export async function runPlaceScrape(
+  { city, category, keyword, limit },
+  { onEvent = () => {}, isCancelled = () => false } = {}
+) {
   const browser = await chromium.launch({
     headless: process.env.SCRAPER_HEADLESS !== 'false'
   });
@@ -19,12 +22,15 @@ export async function runPlaceScrape({ city, category, keyword, limit }) {
     const page = await context.newPage();
     page.setDefaultTimeout(12_000);
 
-    const places = await collectPlaces(page, `${keyword} in ${city}`, limit);
+    onEvent({ type: 'status', message: `Searching Google Maps for "${keyword} in ${city}"...` });
+    const places = await collectPlaces(page, `${keyword} in ${city}`, limit, isCancelled);
+    onEvent({ type: 'status', message: `Found ${places.length} place${places.length === 1 ? '' : 's'}, checking each one...` });
+
     const rows = [];
     const seenNames = new Set();
 
     for (const place of places) {
-      if (rows.length >= limit) break;
+      if (rows.length >= limit || isCancelled()) break;
 
       const details = await scrapePlaceDetails(page, place.url);
       const shopName = clean(details.shopName || place.name);
@@ -33,16 +39,21 @@ export async function runPlaceScrape({ city, category, keyword, limit }) {
       seenNames.add(shopName.toLowerCase());
       const webSignals = details.website ? await scrapeWebsiteSignals(context, details.website) : {};
 
-      rows.push({
+      const row = {
         shopName,
         email: webSignals.email || DASH,
         number: clean(details.number) || DASH,
         accountLink: webSignals.accountLink || DASH,
         category: clean(details.category) || keyword || category,
         location: clean(details.location) || city
-      });
+      };
 
-      await page.waitForTimeout(450);
+      rows.push(row);
+      onEvent({ type: 'row', row, index: rows.length, total: limit });
+
+      if (rows.length < limit && !isCancelled()) {
+        await page.waitForTimeout(randomDelay(1_200, 2_600));
+      }
     }
 
     return rows;
@@ -51,7 +62,11 @@ export async function runPlaceScrape({ city, category, keyword, limit }) {
   }
 }
 
-async function collectPlaces(page, query, limit) {
+function randomDelay(min, max) {
+  return Math.floor(min + Math.random() * (max - min));
+}
+
+async function collectPlaces(page, query, limit, isCancelled = () => false) {
   const searchUrl = `${MAPS_BASE_URL}${encodeURIComponent(query)}`;
   await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 45_000 });
   await acceptConsentIfPresent(page);
@@ -59,7 +74,7 @@ async function collectPlaces(page, query, limit) {
   const places = new Map();
   const feed = page.locator('div[role="feed"]').first();
 
-  for (let attempt = 0; attempt < 24 && places.size < limit; attempt += 1) {
+  for (let attempt = 0; attempt < 24 && places.size < limit && !isCancelled(); attempt += 1) {
     const links = await page
       .locator('a[href*="/maps/place/"]')
       .evaluateAll((anchors) =>
@@ -92,7 +107,7 @@ async function collectPlaces(page, query, limit) {
     } else {
       await page.mouse.wheel(0, 1200);
     }
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(randomDelay(700, 1_300));
   }
 
   return Array.from(places.values()).slice(0, limit);
@@ -135,7 +150,7 @@ async function scrapeWebsiteSignals(context, websiteUrl) {
     const signals = { email: '', accountLink: '' };
 
     for (const url of urlsToVisit) {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12_000 }).catch(() => {});
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 8_000 }).catch(() => {});
       const pageSignals = await extractSignals(page);
       signals.email ||= pageSignals.email;
       signals.accountLink ||= pageSignals.accountLink;
@@ -154,7 +169,7 @@ async function getWebsitePagesToCheck(page, websiteUrl) {
   const normalized = safeUrl(websiteUrl);
   if (!normalized) return [];
 
-  await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: 12_000 }).catch(() => {});
+  await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: 10_000 }).catch(() => {});
   const contactLinks = await page
     .locator('a[href]')
     .evaluateAll((anchors) =>
@@ -165,7 +180,7 @@ async function getWebsitePagesToCheck(page, websiteUrl) {
         }))
         .filter((anchor) => /contact|about|location|visit/i.test(anchor.text))
         .map((anchor) => anchor.href)
-        .slice(0, 3)
+        .slice(0, 1)
     )
     .catch(() => []);
 
