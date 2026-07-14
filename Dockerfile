@@ -5,6 +5,9 @@ FROM node:${NODE_VERSION}-slim AS base
 
 WORKDIR /app
 ENV NODE_ENV="production"
+# Install Playwright's browser inside /app (not the default ~/.cache) so the
+# final stage's `COPY --from=build /app /app` actually carries it over.
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers
 
 ARG PNPM_VERSION=9.15.4
 RUN npm install -g pnpm@$PNPM_VERSION
