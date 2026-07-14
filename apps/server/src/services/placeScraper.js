@@ -12,7 +12,8 @@ export async function runPlaceScrape(
   { onEvent = () => {}, isCancelled = () => false } = {}
 ) {
   const browser = await chromium.launch({
-    headless: process.env.SCRAPER_HEADLESS !== 'false'
+    headless: process.env.SCRAPER_HEADLESS !== 'false',
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   });
 
   try {

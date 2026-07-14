@@ -29,6 +29,7 @@ export async function scrapePlaces(request, response, next) {
     const rows = await runPlaceScrape(input, { onEvent: send, isCancelled: () => cancelled });
     send({ type: 'done', count: rows.length, csv: toCsv(rows) });
   } catch (error) {
+    console.error('Scrape failed:', error);
     send({ type: 'error', message: error.status ? error.message : 'Unexpected scraper error' });
   } finally {
     response.end();
