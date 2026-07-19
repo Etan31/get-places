@@ -16,8 +16,8 @@ export function validateScrapeRequest(body) {
   const city = normalizeText(body?.city);
   const category = normalizeText(body?.category);
   const keyword = normalizeText(body?.keyword);
-  const limit = Number(body?.limit || 50);
-  const maxResults = Number(process.env.SCRAPER_MAX_RESULTS || 50);
+  const limit = Number(body?.limit || 100);
+  const maxResults = Number(process.env.SCRAPER_MAX_RESULTS || 100);
 
   if (city.length < 2 || city.length > 90) {
     throw httpError(400, 'City must be between 2 and 90 characters.');
