@@ -42,7 +42,7 @@ function App() {
   const [city, setCity] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0].label);
   const [keyword, setKeyword] = useState(CATEGORIES[0].keywords[0]);
-  const [limit, setLimit] = useState(50);
+  const [limit, setLimit] = useState(100);
   const [rows, setRows] = useState([]);
   const [csv, setCsv] = useState("");
   const [status, setStatus] = useState("idle");
