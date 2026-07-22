@@ -1,48 +1,64 @@
-import React, { useMemo, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { Download, Loader2, MapPin, Play, Scissors, Search, Store } from 'lucide-react';
-import './styles.css';
+import React, { useMemo, useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  Download,
+  Loader2,
+  MapPin,
+  Play,
+  Scissors,
+  Search,
+  Store,
+} from "lucide-react";
+import "./styles.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 
 const CATEGORIES = [
   {
-    label: 'Personal Care & Grooming Services',
+    label: "Personal Care & Grooming Services",
     icon: Scissors,
-    keywords: ['barbershop', 'salon', 'nail salon', 'spa', 'massage']
+    keywords: ["barbershop", "salon", "nail salon", "spa", "massage"],
   },
   {
-    label: 'Specialty Retail & Boutique Shops',
+    label: "Specialty Retail & Boutique Shops",
     icon: Store,
-    keywords: ['boutique', 'gift shop', 'flower shop', 'bookstore', 'thrift shop']
+    keywords: [
+      "boutique",
+      "gift shop",
+      "flower shop",
+      "bookstore",
+      "thrift shop",
+    ],
   },
   {
-    label: 'Food, Beverage & Entertainment (Discretionary Dining)',
+    label: "Food, Beverage & Entertainment (Discretionary Dining)",
     icon: MapPin,
-    keywords: ['coffee shop', 'cafe', 'bakery', 'restaurant', 'bar']
-  }
+    keywords: ["coffee shop", "cafe", "bakery", "restaurant", "bar"],
+  },
 ];
 
 function App() {
-  const [city, setCity] = useState('');
+  const [city, setCity] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0].label);
   const [keyword, setKeyword] = useState(CATEGORIES[0].keywords[0]);
   const [limit, setLimit] = useState(50);
   const [rows, setRows] = useState([]);
-  const [csv, setCsv] = useState('');
-  const [status, setStatus] = useState('idle');
-  const [error, setError] = useState('');
-  const [progressMessage, setProgressMessage] = useState('');
+  const [csv, setCsv] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState("");
+  const [progressMessage, setProgressMessage] = useState("");
 
   const selectedCategory = useMemo(
     () => CATEGORIES.find((item) => item.label === category) || CATEGORIES[0],
-    [category]
+    [category],
   );
 
-  const canRun = city.trim().length >= 2 && status !== 'loading';
+  const canRun = city.trim().length >= 2 && status !== "loading";
 
   function handleCategoryChange(nextCategory) {
-    const next = CATEGORIES.find((item) => item.label === nextCategory) || CATEGORIES[0];
+    const next =
+      CATEGORIES.find((item) => item.label === nextCategory) || CATEGORIES[0];
     setCategory(next.label);
     setKeyword(next.keywords[0]);
   }
@@ -51,48 +67,52 @@ function App() {
     event.preventDefault();
     if (!canRun) return;
 
-    setStatus('loading');
-    setError('');
+    setStatus("loading");
+    setError("");
     setRows([]);
-    setCsv('');
-    setProgressMessage('Starting scrape...');
+    setCsv("");
+    setProgressMessage("Starting scrape...");
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/scrape`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           city: city.trim(),
           category,
           keyword: keyword.trim(),
-          limit: Number(limit)
-        })
+          limit: Number(limit),
+        }),
       });
 
       if (!response.ok) {
         const data = await parseJsonResponse(response);
-        throw new Error(data.error || 'Scrape failed');
+        throw new Error(data.error || "Scrape failed");
       }
 
-      const { rows: finalRows, csv: finalCsv } = await readScrapeStream(response, setRows, setProgressMessage);
+      const { rows: finalRows, csv: finalCsv } = await readScrapeStream(
+        response,
+        setRows,
+        setProgressMessage,
+      );
 
       setCsv(finalCsv);
-      setStatus('done');
+      setStatus("done");
       if (finalRows.length === 0) {
-        setProgressMessage('No public listings found for that search.');
+        setProgressMessage("No public listings found for that search.");
       }
     } catch (requestError) {
       setError(getRequestErrorMessage(requestError));
-      setStatus('error');
+      setStatus("error");
     }
   }
 
   function downloadCsv() {
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = `places-${city.trim().replace(/\s+/g, '-').toLowerCase()}.csv`;
+    link.download = `places-${city.trim().replace(/\s+/g, "-").toLowerCase()}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -170,7 +190,7 @@ function App() {
             <input
               type="number"
               min="1"
-              max="50"
+              max="100"
               value={limit}
               onChange={(event) => setLimit(event.target.value)}
             />
@@ -301,43 +321,45 @@ function App() {
 
 async function readScrapeStream(response, setRows, setProgressMessage) {
   const rows = [];
-  let csv = '';
-  let streamError = '';
+  let csv = "";
+  let streamError = "";
 
   const reader = response.body?.getReader();
   if (!reader) {
     const data = await parseJsonResponse(response);
     setRows(data.rows || []);
-    return { rows: data.rows || [], csv: data.csv || '' };
+    return { rows: data.rows || [], csv: data.csv || "" };
   }
 
   const decoder = new TextDecoder();
-  let buffer = '';
+  let buffer = "";
 
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    let newlineIndex = buffer.indexOf('\n');
+    let newlineIndex = buffer.indexOf("\n");
     while (newlineIndex !== -1) {
       const line = buffer.slice(0, newlineIndex).trim();
       buffer = buffer.slice(newlineIndex + 1);
-      newlineIndex = buffer.indexOf('\n');
+      newlineIndex = buffer.indexOf("\n");
       if (!line) continue;
 
       const scrapeEvent = parseEventLine(line);
       if (!scrapeEvent) continue;
 
-      if (scrapeEvent.type === 'status') {
+      if (scrapeEvent.type === "status") {
         setProgressMessage(scrapeEvent.message);
-      } else if (scrapeEvent.type === 'row') {
+      } else if (scrapeEvent.type === "row") {
         rows.push(scrapeEvent.row);
         setRows([...rows]);
-        setProgressMessage(`Found ${scrapeEvent.index} of ${scrapeEvent.total} rows...`);
-      } else if (scrapeEvent.type === 'done') {
-        csv = scrapeEvent.csv || '';
-      } else if (scrapeEvent.type === 'error') {
+        setProgressMessage(
+          `Found ${scrapeEvent.index} of ${scrapeEvent.total} rows...`,
+        );
+      } else if (scrapeEvent.type === "done") {
+        csv = scrapeEvent.csv || "";
+      } else if (scrapeEvent.type === "error") {
         streamError = scrapeEvent.message;
       }
     }
@@ -363,7 +385,9 @@ async function parseJsonResponse(response) {
   try {
     return JSON.parse(text);
   } catch {
-    return { error: `Unexpected response from the scraper API (${response.status}).` };
+    return {
+      error: `Unexpected response from the scraper API (${response.status}).`,
+    };
   }
 }
 
@@ -372,7 +396,7 @@ function getRequestErrorMessage(error) {
     return `Could not reach the scraper API at ${API_BASE_URL}. Check that the server is running and that this page is allowed by CORS.`;
   }
 
-  return error.message || 'Scrape failed';
+  return error.message || "Scrape failed";
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById("root")).render(<App />);
